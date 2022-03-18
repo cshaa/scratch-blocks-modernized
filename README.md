@@ -1,6 +1,6 @@
 # scratch-blocks-modernized
 
-**Scratch Blocks Modernized** is an _unofficial_ fork of MIT's [Scratch Blocks](https://github.com/LLK/scratch-blocks), a visual programming interface which itself is a fork of Google's [Blockly](https://github.com/google/blockly) project. The goal of **Scratch Blocks Modernized** is to... well _modernize_ Scratch Blocks – throw away legacy stuff like Python2 & Google Closure, and introduce tools like TypeScript and modern bundlers. The project is also not afraid to significantly change the original Blockly's API to make it a better fit with the modern JavaScript ecosystem.
+**Scratch Blocks Modernized** is an _unofficial_ fork of MIT's [Scratch Blocks](https://github.com/LLK/scratch-blocks), a visual programming interface which itself is a fork of Google's [Blockly](https://github.com/google/blockly) project. The goal of **Scratch Blocks Modernized** is to... well _modernize_ Scratch Blocks – throw away legacy stuff like Python 2 & Google Closure, and introduce tools like TypeScript and modern bundlers. The project is also not afraid to significantly change the original Blockly's API to make it a better fit with the modern JavaScript ecosystem.
 
 The intended outcomes of this project are:
  * making it trivial to get Scratch Blocks working with modern frameworks such as React, Preact and Svelte
