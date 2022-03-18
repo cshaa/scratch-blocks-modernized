@@ -1,0 +1,9 @@
+{
+    "include": [ "core/**/*" ],
+    "compilerOptions": {
+        "lib": [
+            "ES5",
+            "ES2015.Symbol"
+        ]
+    }
+}
