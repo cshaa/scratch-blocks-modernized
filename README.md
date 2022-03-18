@@ -1,13 +1,12 @@
-# scratch-blocks
-#### Scratch Blocks is a library for building creative computing interfaces.
-[![Build Status](https://travis-ci.org/LLK/scratch-blocks.svg?branch=develop)](https://travis-ci.org/LLK/scratch-blocks)
-[![Dependency Status](https://david-dm.org/LLK/scratch-blocks.svg)](https://david-dm.org/LLK/scratch-blocks)
-[![devDependency Status](https://david-dm.org/LLK/scratch-blocks/dev-status.svg)](https://david-dm.org/LLK/scratch-blocks#info=devDependencies)
+# scratch-blocks-modernized
 
-![](https://cloud.githubusercontent.com/assets/747641/15227351/c37c09da-1854-11e6-8dc7-9a298f2b1f01.jpg)
+**Scratch Blocks Modernized** is an _unofficial_ fork of MIT's [Scratch Blocks](https://github.com/LLK/scratch-blocks), a visual programming interface which itself is a fork of Google's [Blockly](https://github.com/google/blockly) project. The goal of **Scratch Blocks Modernized** is to... well _modernize_ Scratch Blocks – throw away legacy stuff like Python2 & Google Closure, and introduce tools like TypeScript and modern bundlers. The project is also not afraid to significantly change the original Blockly's API to make it a better fit with the modern JavaScript ecosystem.
 
-## Introduction
-Scratch Blocks is a fork of Google's [Blockly](https://github.com/google/blockly) project that provides a design specification and codebase for building creative computing interfaces. Together with the [Scratch Virtual Machine (VM)](https://github.com/LLK/scratch-vm) this codebase allows for the rapid design and development of visual programming interfaces. Unlike [Blockly](https://github.com/google/blockly), Scratch Blocks does not use [code generators](https://developers.google.com/blockly/guides/configure/web/code-generators), but rather leverages the [Scratch Virtual Machine](https://github.com/LLK/scratch-vm) to create highly dynamic, interactive programming environments.
+The intended outcomes of this project are:
+ * making it trivial to get Scratch Blocks working with modern frameworks such as React, Preact and Svelte
+ * making it much simpler for developers to create and maintain their own fork of Scratch Blocks
+
+
 
 *This project is in active development and should be considered a "developer preview" at this time.*
 
