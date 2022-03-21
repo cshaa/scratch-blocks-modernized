@@ -1,9 +1,10 @@
 {
     "include": [ "core/**/*" ],
     "compilerOptions": {
+        "target": "ES2021",
         "lib": [
-            "ES5",
-            "ES2015.Symbol"
+            "DOM",
+            "ES2021",
         ]
     }
 }

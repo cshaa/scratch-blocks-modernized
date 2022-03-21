@@ -1,5 +1,18 @@
 {
-    "parser": "babel-eslint",
+    "env": {
+        "browser": true,
+        "node": true,
+        "es6": true,
+    },
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint",
+    ],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:@typescript-eslint/eslint-recommended",
+    ],
     "rules": {
         "curly": ["error", "multi-line"],
         "eol-last": ["error"],
@@ -28,7 +41,7 @@
         "linebreak-style": ["error", "unix"],
         "max-len": ["error", 120, 4],
         "no-trailing-spaces": ["error", { "skipBlankLines": true }],
-        "no-unused-vars": [
+        "@typescript-eslint/no-unused-vars": [
             "error",
             {
                 "args": "after-used",
@@ -38,7 +51,8 @@
                 "argsIgnorePattern": "^_"
             }
         ],
-        "no-use-before-define": ["error"],
+        "@typescript-eslint/no-inferrable-types": ["off"],
+        "no-use-before-define": ["error", {"functions": false}],
         "quotes": ["off"], // Blockly mixes single and double quotes
         "semi": ["error", "always"],
         "space-before-function-paren": ["error", "never"], // Blockly doesn't have space before function paren
@@ -48,11 +62,13 @@
         "no-redeclare": ["off"], // Closure style allows redeclarations
         "valid-jsdoc": ["error", {"requireReturn": false}],
         "no-console": ["off"],
-        "no-constant-condition": ["off"]
+        "no-constant-condition": ["off"],
+        "guard-for-in": ["error"],
+        "no-restricted-syntax": ["error"],
+        "eqeqeq": ["error"],
     },
     "globals": {
         "Blockly": true, // Blockly global
         "goog": true, // goog closure libraries/includes
     },
-    "extends": "eslint:recommended"
 }
