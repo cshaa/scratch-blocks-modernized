@@ -95,13 +95,9 @@ export function getMessageArray_() {
  * @param {string} attributeName Name of attribute to remove.
  * @deprecated
  */
-export function removeAttribute(element: Element, attributeName: string) {
+export function removeAttribute(element: Element, attributeName: string): void {
   console.log('Deprecated function removeAttribute called');
   element.removeAttribute(attributeName);
-}
-
-export function classSet(element: Element): Set<string> {
-  return new Set((element.getAttribute('class') ?? '').split(/\w+/));
 }
 
 /**
@@ -111,12 +107,10 @@ export function classSet(element: Element): Set<string> {
  * @param {string} className Name of class to add.
  * @return {boolean} True if class was added, false if already present.
  */
-export function addClass(element: Element, className: string): boolean {
-  const classes = classSet(element);
-  if (classes.has(className)) return false;
-  
-  classes.add(className);
-  element.setAttribute('class', [...classes].join(' '));
+export function addClass(element: Element, className: string): boolean
+{
+  if (element.classList.contains(className)) return false;
+  element.classList.add(className);
   return true;
 }
 
@@ -127,16 +121,12 @@ export function addClass(element: Element, className: string): boolean {
  * @param {string} className Name of class to remove.
  * @return {boolean} True if class was removed, false if never present.
  */
-export function removeClass(element: Element, className: string) {
-  const classes = classSet(element);
+export function removeClass(element: Element, className: string)
+{
+  if (!element.classList.contains(className)) return false;
 
-  if (!classes.has(className)) return false;
-
-  classes.delete(className);
-
-  if (classes.size === 0) element.removeAttribute('class');
-  else element.setAttribute('class', [...classes].join(' '));
-
+  element.classList.remove(className);
+  if (element.classList.length === 0) element.removeAttribute('class');
   return true;
 }
 
@@ -148,8 +138,8 @@ export function removeClass(element: Element, className: string) {
  * @return {boolean} True if class exists, false otherwise.
  * @package
  */
-export function hasClass(element, className) {
-  return classSet(element).has(className);
+export function hasClass(element: Element, className: string): boolean {
+  return element.classList.contains(className);
 }
 
 /**
@@ -172,7 +162,7 @@ export function isTargetInput(e: Event): e is Event & { target: HTMLInputElement
   const { target } = e as Event & { target: { type?: string } };
 
   if (e['isContentEditable']) return true;
-  if (INPUT_TYPE_VALUES.has(target.type)) return true;
+  if (target.type && INPUT_TYPE_VALUES.has(target.type)) return true;
   return false;
 }
 
@@ -729,7 +719,7 @@ export function wrapLine_(text: string, limit: number): string {
     text = wrapToText_(words, wordBreaks);
     lineCount++;
   } while (score > lastScore);
-  
+
   return lastText;
 }
 
@@ -741,12 +731,20 @@ export function wrapLine_(text: string, limit: number): string {
  * @return {number} Larger the better.
  * @private
  */
-export function wrapScore_(words, wordBreaks, limit) {
+export function wrapScore_(
+    words: readonly string[],
+    wordBreaks: readonly boolean[],
+    limit: number
+): number
+{
   // If this function becomes a performance liability, add caching.
   // Compute the length of each line.
-  var lineLengths = [0];
-  var linePunctuation = [];
-  for (var i = 0; i < words.length; i++) {
+
+  const lineLengths = [0];
+  const linePunctuation: string[] = [];
+
+  for (let i = 0; i < words.length; i++)
+  {
     lineLengths[lineLengths.length - 1] += words[i].length;
     if (wordBreaks[i] === true) {
       lineLengths.push(0);
@@ -755,24 +753,25 @@ export function wrapScore_(words, wordBreaks, limit) {
       lineLengths[lineLengths.length - 1]++;
     }
   }
-  var maxLength = Math.max.apply(Math, lineLengths);
+  const maxLength = Math.max(...lineLengths);
 
-  var score = 0;
-  for (var i = 0; i < lineLengths.length; i++) {
+  let score = 0;
+  for (let i = 0; i < lineLengths.length; i++) {
     // Optimize for width.
     // -2 points per char over limit (scaled to the power of 1.5).
-    score -= Math.pow(Math.abs(limit - lineLengths[i]), 1.5) * 2;
+    score -= 2 * (Math.abs(limit - lineLengths[i]) ** 1.5);
     // Optimize for even lines.
     // -1 point per char smaller than max (scaled to the power of 1.5).
-    score -= Math.pow(maxLength - lineLengths[i], 1.5);
+    score -= (maxLength - lineLengths[i]) ** 1.5;
     // Optimize for structure.
     // Add score to line endings after punctuation.
-    if ('.?!'.indexOf(linePunctuation[i]) != -1) {
+    if ('.?!'.includes(linePunctuation[i])) {
       score += limit / 3;
-    } else if (',;)]}'.indexOf(linePunctuation[i]) != -1) {
+    } else if (',;)]}'.includes(linePunctuation[i])) {
       score += limit / 4;
     }
   }
+  
   // All else being equal, the last line should not be longer than the
   // previous line.  For example, this looks wrong:
   // aaa bbb
@@ -781,31 +780,39 @@ export function wrapScore_(words, wordBreaks, limit) {
       lineLengths[lineLengths.length - 2]) {
     score += 0.5;
   }
+
   return score;
 }
 
 /**
- * Mutate the array of line break locations until an optimal solution is found.
- * No line breaks are added or deleted, they are simply moved around.
+ * Modify (a copy of) the array of line break locations until an optimal
+ * solution is found. No line breaks are added or deleted, they are
+ * simply moved around.
  * @param {!Array.<string>} words Array of each word.
  * @param {!Array.<boolean>} wordBreaks Array of line breaks.
  * @param {number} limit Width to wrap each line.
  * @return {!Array.<boolean>} New array of optimal line breaks.
  * @private
  */
-export function wrapMutate_(words, wordBreaks, limit) {
-  var bestScore = Blockly.utils.wrapScore_(words, wordBreaks, limit);
-  var bestBreaks;
+export function wrapMutate_(
+    words: readonly string[],
+    wordBreaks: readonly boolean[],
+    limit: number
+): boolean[]
+{
+  let bestScore = wrapScore_(words, wordBreaks, limit);
+  let bestBreaks;
+
   // Try shifting every line break forward or backward.
-  for (var i = 0; i < wordBreaks.length - 1; i++) {
-    if (wordBreaks[i] == wordBreaks[i + 1]) {
-      continue;
-    }
-    var mutatedWordBreaks = [].concat(wordBreaks);
+  for (let i = 0; i < wordBreaks.length - 1; i++) {
+    if (wordBreaks[i] === wordBreaks[i + 1]) continue;
+
+    const mutatedWordBreaks = [...wordBreaks];
     mutatedWordBreaks[i] = !mutatedWordBreaks[i];
     mutatedWordBreaks[i + 1] = !mutatedWordBreaks[i + 1];
-    var mutatedScore =
-        Blockly.utils.wrapScore_(words, mutatedWordBreaks, limit);
+
+    const mutatedScore = wrapScore_(words, mutatedWordBreaks, limit);
+    
     if (mutatedScore > bestScore) {
       bestScore = mutatedScore;
       bestBreaks = mutatedWordBreaks;
@@ -813,10 +820,10 @@ export function wrapMutate_(words, wordBreaks, limit) {
   }
   if (bestBreaks) {
     // Found an improvement.  See if it may be improved further.
-    return Blockly.utils.wrapMutate_(words, bestBreaks, limit);
+    return wrapMutate_(words, bestBreaks, limit);
   }
   // No improvements found.  Done.
-  return wordBreaks;
+  return [...wordBreaks];
 }
 
 /**
@@ -826,35 +833,46 @@ export function wrapMutate_(words, wordBreaks, limit) {
  * @return {string} Plain text.
  * @private
  */
-export function wrapToText_(words, wordBreaks) {
-  var text = [];
-  for (var i = 0; i < words.length; i++) {
+export function wrapToText_(
+    words: readonly string[],
+    wordBreaks: ReadonlyArray<boolean | undefined>
+): string
+{
+  const text: string[] = [];
+
+  for (let i = 0; i < words.length; i++) {
     text.push(words[i]);
     if (wordBreaks[i] !== undefined) {
       text.push(wordBreaks[i] ? '\n' : ' ');
     }
   }
+
   return text.join('');
 }
+
+
+// memoize the result of is3dSupported()
+let is3dSupported_cached_: boolean | undefined = undefined;
 
 /**
  * Check if 3D transforms are supported by adding an element
  * and attempting to set the property.
  * @return {boolean} true if 3D transforms are supported.
  */
-export function is3dSupported() {
-  if (Blockly.utils.is3dSupported.cached_ !== undefined) {
-    return Blockly.utils.is3dSupported.cached_;
+export function is3dSupported(): boolean {
+  if (is3dSupported_cached_ !== undefined) {
+    return is3dSupported_cached_;
   }
+
   // CC-BY-SA Lorenzo Polidori
   // stackoverflow.com/questions/5661671/detecting-transform-translate3d-support
   if (!goog.global.getComputedStyle) {
     return false;
   }
 
-  var el = document.createElement('p');
-  var has3d = 'none';
-  var transforms = {
+  const el = document.createElement('p');
+  let has3d = 'none';
+  const transforms = {
     'webkitTransform': '-webkit-transform',
     'OTransform': '-o-transform',
     'msTransform': '-ms-transform',
@@ -865,10 +883,10 @@ export function is3dSupported() {
   // Add it to the body to get the computed style.
   document.body.insertBefore(el, null);
 
-  for (var t in transforms) {
+  for (const t of Object.keys(transforms)) {
     if (el.style[t] !== undefined) {
       el.style[t] = 'translate3d(1px,1px,1px)';
-      var computedStyle = goog.global.getComputedStyle(el);
+      const computedStyle = goog.global.getComputedStyle(el);
       if (!computedStyle) {
         // getComputedStyle in Firefox returns null when blockly is loaded
         // inside an iframe with display: none.  Returning false and not
@@ -883,8 +901,8 @@ export function is3dSupported() {
     }
   }
   document.body.removeChild(el);
-  Blockly.utils.is3dSupported.cached_ = has3d !== 'none';
-  return Blockly.utils.is3dSupported.cached_;
+  is3dSupported_cached_ = has3d !== 'none';
+  return is3dSupported_cached_;
 }
 
 /**
@@ -894,25 +912,24 @@ export function is3dSupported() {
  * @param {!Element} refNode Existing element to precede new node.
  * @package
  */
-export function insertAfter(newNode, refNode) {
-  var siblingNode = refNode.nextSibling;
-  var parentNode = refNode.parentNode;
-  if (!parentNode) {
-    throw 'Reference node has no parent.';
-  }
-  if (siblingNode) {
-    parentNode.insertBefore(newNode, siblingNode);
-  } else {
-    parentNode.appendChild(newNode);
-  }
+export function insertAfter(newNode: Element, refNode: Element) {
+  const siblingNode = refNode.nextSibling;
+  const parentNode = refNode.parentNode;
+
+  if (!parentNode) throw 'Reference node has no parent.';
+
+  if (siblingNode) parentNode.insertBefore(newNode, siblingNode);
+  else parentNode.appendChild(newNode);
 }
 
 /**
  * Calls a function after the page has loaded, possibly immediately.
  * @param {function()} fn Function to run.
  * @throws Error Will throw if no global document can be found (e.g., Node.js).
+ *
+ * TODO Investigate why polling and not on:load
  */
-export function runAfterPageLoad(fn) {
+export function runAfterPageLoad(fn: () => void): void {
   if (!document) {
     throw new Error('Blockly.utils.runAfterPageLoad() requires browser document.');
   }
@@ -920,7 +937,7 @@ export function runAfterPageLoad(fn) {
     fn();  // Page has already loaded. Call immediately.
   } else {
     // Poll readyState.
-    var readyStateCheckInterval = setInterval(function() {
+    const readyStateCheckInterval = setInterval(function() {
       if (document.readyState === 'complete') {
         clearInterval(readyStateCheckInterval);
         fn();
@@ -930,29 +947,42 @@ export function runAfterPageLoad(fn) {
 }
 
 /**
+ * @deprecated
  * Sets the CSS transform property on an element. This function sets the
  * non-vendor-prefixed and vendor-prefixed versions for backwards compatibility
  * with older browsers. See http://caniuse.com/#feat=transforms2d
  * @param {!Element} node The node which the CSS transform should be applied.
  * @param {string} transform The value of the CSS `transform` property.
  */
-export function setCssTransform(node, transform) {
+export function setCssTransform(node: HTMLElement | SVGElement, transform: string) {
   node.style['transform'] = transform;
   node.style['-webkit-transform'] = transform;
 }
 
 /**
+ * Bounding box – an object containing containing the x coordinate
+ * of the leftmost and rightmost point of an object, as well as the
+ * y coordinate of the topmost and bottommost point.
+ */
+export interface BBox {
+  top: number,
+  right: number,
+  bottom: number,
+  left: number,
+}
+
+/**
  * Get the position of the current viewport in window coordinates.  This takes
  * scroll into account.
- * @return {!Object} an object containing window width, height, and scroll
- *     position in window coordinates.
+ * @return {!Object} a bounding box of the viewport (visible area) in the
+ *     coordinates that are relative to the page.
  * @package
  */
-export function getViewportBBox() {
+export function getViewportBBox(): BBox {
   // Pixels.
-  var windowSize = goog.dom.getViewportSize();
+  const windowSize = goog.dom.getViewportSize();
   // Pixels, in window coordinates.
-  var scrollOffset = goog.style.getViewportPageOffset(document);
+  const scrollOffset = goog.style.getViewportPageOffset(document);
   return {
     right: windowSize.width + scrollOffset.x,
     bottom: windowSize.height + scrollOffset.y,
@@ -962,6 +992,8 @@ export function getViewportBBox() {
 }
 
 /**
+ * @deprecated Use `str.startsWith(prefix)`
+ *
  * Fast prefix-checker.
  * Copied from Closure's goog.string.startsWith.
  * @param {string} str The string to check.
@@ -969,8 +1001,8 @@ export function getViewportBBox() {
  * @return {boolean} True if `str` begins with `prefix`.
  * @package
  */
-export function startsWith(str, prefix) {
-  return str.lastIndexOf(prefix, 0) == 0;
+export function startsWith(str: string, prefix: string): boolean {
+  return str.startsWith(prefix);
 }
 
 /**
@@ -980,6 +1012,6 @@ export function startsWith(str, prefix) {
  * @return {number} Angle in radians.
  * @package
  */
-export function toRadians(angleDegrees) {
+export function toRadians(angleDegrees: number): number {
   return angleDegrees * Math.PI / 180;
 }
