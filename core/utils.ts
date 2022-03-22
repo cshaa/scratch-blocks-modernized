@@ -292,7 +292,7 @@ export function isRightButton(e: MouseEvent): boolean {
     return true;
   }
 
-  return e.button == 2;
+  return e.button === 2;
 }
 
 /**
@@ -425,12 +425,13 @@ export function tokenizeInterpolation(message: string): Array<string | number> {
  * @param {string|?} message Message, which may be a string that contains
  *                           string table references.
  * @return {!string} String with message references replaced.
+ * FIXME this function does *what* for non-string input?!
  */
-export function replaceMessageReferences(message) {
-  if (!goog.isString(message)) {
+export function replaceMessageReferences(message: unknown): unknown {
+  if (typeof message !== "string") {
     return message;
   }
-  var interpolatedResult = Blockly.utils.tokenizeInterpolation_(message, false);
+  const interpolatedResult = tokenizeInterpolation_(message, false);
   // When parseInterpolationTokens == false, interpolatedResult should be at
   // most length 1.
   return interpolatedResult.length ? interpolatedResult[0] : '';
@@ -443,16 +444,18 @@ export function replaceMessageReferences(message) {
  * @return {boolean} True if all message references have matching values.
  *     Otherwise, false.
  */
-export function checkMessageReferences(message) {
-  var isValid = true;  // True until a bad reference is found.
+export function checkMessageReferences(message: string): boolean {
+  let isValid = true;  // True until a bad reference is found.
 
-  var regex = /%{BKY_([a-zA-Z][a-zA-Z0-9_]*)}/g;
-  var match = regex.exec(message);
+  const regex = /%{BKY_([a-zA-Z][a-zA-Z0-9_]*)}/g;
+  let match = regex.exec(message);
   while (match) {
-    var msgKey = match[1];
-    if (Blockly.utils.getMessageArray_()[msgKey] == undefined) {
+    const msgKey = match[1];
+    if (getMessageArray_()[msgKey] === undefined) {
       console.log('WARNING: No message string for %{BKY_' + msgKey + '}.');
       isValid = false;
+      // the result of this function will be `false`, but still keep
+      // running so that all invalid references are found and logged
     }
 
     // Re-run on remainder of string.
@@ -473,83 +476,123 @@ export function checkMessageReferences(message) {
  * @return {!Array.<string|number>} Array of strings and numbers.
  * @private
  */
-export function tokenizeInterpolation_(message,
-    parseInterpolationTokens) {
-  var tokens = [];
-  var chars = message.split('');
-  chars.push('');  // End marker.
+export function tokenizeInterpolation_(
+    message: string,
+    parseInterpolationTokens: boolean
+): Array<string | number>
+{
+  const tokens: Array<string | number> = [];
+  const chars = [...message, '']; // Characters plus an end marker
+
   // Parse the message with a finite state machine.
-  // 0 - Base case.
-  // 1 - % found.
-  // 2 - Digit found.
-  // 3 - Message ref found.
-  var state = 0;
-  var buffer = [];
-  var number = null;
-  for (var i = 0; i < chars.length; i++) {
-    var c = chars[i];
-    if (state == 0) {
-      if (c == '%') {
-        var text = buffer.join('');
-        if (text) {
-          tokens.push(text);
+  enum State {
+    Base,    // Base case.
+    Percent, // % found.
+    Digit,   // Digit found.
+    Message, // Message ref found.
+  }
+  
+  let state = State.Base;
+  let buffer: string[] = [];
+  let number = '';
+
+  function flushBuffer() {
+    const text = buffer.join('');
+    if (text !== '') tokens.push(text);
+    buffer = [];
+  }
+
+  function flushNumber() {
+    tokens.push(parseInt(number, 10));
+    number = '';
+  }
+
+  const isDigit = (char: string) => /^[0-9]$/.test(char);
+  const isKey = (str: string) => /^[a-zA-Z][a-zA-Z0-9_]*$/.test(str);
+
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    
+    switch (state)
+    {
+      case State.Base: {
+        if (c === '%') {
+          flushBuffer();
+          state = State.Percent;  // Start escape.
+        } else {
+          buffer.push(c);  // Regular char.
         }
-        buffer.length = 0;
-        state = 1;  // Start escape.
-      } else {
-        buffer.push(c);  // Regular char.
+
+        break;
       }
-    } else if (state == 1) {
-      if (c == '%') {
-        buffer.push(c);  // Escaped %: %%
-        state = 0;
-      } else if (parseInterpolationTokens && '0' <= c && c <= '9') {
-        state = 2;
-        number = c;
-        var text = buffer.join('');
-        if (text) {
-          tokens.push(text);
+
+      case State.Percent: {
+        if (c === '%') {
+          buffer.push(c);  // Escaped %: %%
+          state = State.Base;
+          break;
         }
-        buffer.length = 0;
-      } else if (c == '{') {
-        state = 3;
-      } else {
+        
+        if (parseInterpolationTokens && isDigit(c)) {
+          number = c;
+          flushBuffer();
+          state = State.Digit;
+          break;
+        }
+        
+        if (c === '{') {
+          state = State.Message;
+          break;
+        }
+
         buffer.push('%', c);  // Not recognized. Return as literal.
-        state = 0;
+        state = State.Base;
+
+        break;
       }
-    } else if (state == 2) {
-      if ('0' <= c && c <= '9') {
-        number += c;  // Multi-digit number.
-      } else {
-        tokens.push(parseInt(number, 10));
+    
+      case State.Digit: {
+        if (isDigit(c)) {
+          number += c;  // Multi-digit number.
+          break;
+        }
+
+        flushNumber();
         i--;  // Parse this char again.
-        state = 0;
+        state = State.Base;
+        
+        break;
       }
-    } else if (state == 3) {  // String table reference
-      if (c == '') {
-        // Premature end before closing '}'
-        buffer.splice(0, 0, '%{'); // Re-insert leading delimiter
-        i--;  // Parse this char again.
-        state = 0; // and parse as string literal.
-      } else if (c != '}') {
-        buffer.push(c);
-      } else  {
-        var rawKey = buffer.join('');
-        if (/[a-zA-Z][a-zA-Z0-9_]*/.test(rawKey)) {  // Strict matching
+
+      case State.Message: {  // String table reference
+        if (c === '') {
+          // Premature end before closing '}'
+          buffer = ['%{', ...buffer]; // Re-insert leading delimiter
+          i--;  // Parse this char again.
+          state = State.Base; // and parse as string literal.
+          break;
+        }
+        
+        if (c !== '}') {
+          buffer.push(c);
+          break;
+        }
+
+        const rawKey = buffer.join('');
+        if (isKey(rawKey)) {
           // Found a valid string key. Attempt case insensitive match.
-          var keyUpper = rawKey.toUpperCase();
+          const keyUpper = rawKey.toUpperCase();
 
           // BKY_ is the prefix used to namespace the strings used in Blockly
           // core files and the predefined blocks in ../blocks/. These strings
           // are defined in ../msgs/ files.
-          var bklyKey = goog.string.startsWith(keyUpper, 'BKY_') ?
-              keyUpper.substring(4) : null;
-          if (bklyKey && bklyKey in Blockly.Msg) {
-            var rawValue = Blockly.Msg[bklyKey];
-            if (goog.isString(rawValue)) {
+          const bklyKey = keyUpper.startsWith('BKY_') ? keyUpper.substring(4) : null;
+
+          if (bklyKey !== null && bklyKey in Blockly.Msg) {
+            const rawValue = Blockly.Msg[bklyKey];
+            if (typeof rawValue === "string") {
               // Attempt to dereference substrings, too, appending to the end.
-              Array.prototype.push.apply(tokens,
-                  Blockly.utils.tokenizeInterpolation(rawValue));
+              tokens.push( ...tokenizeInterpolation(rawValue) );
             } else if (parseInterpolationTokens) {
               // When parsing interpolation tokens, numbers are special
               // placeholders (%1, %2, etc). Make sure all other values are
@@ -562,58 +605,35 @@ export function tokenizeInterpolation_(message,
             // No entry found in the string table. Pass reference as string.
             tokens.push('%{' + rawKey + '}');
           }
-          buffer.length = 0;  // Clear the array
-          state = 0;
         } else {
           tokens.push('%{' + rawKey + '}');
-          buffer.length = 0;
-          state = 0; // and parse as string literal.
         }
+
+        buffer = [];
+        state = State.Base;
+        
+        break;
       }
+
     }
+
   }
-  var text = buffer.join('');
-  if (text) {
-    tokens.push(text);
-  }
+  flushBuffer();
 
   // Merge adjacent text tokens into a single string.
-  var mergedTokens = [];
-  buffer.length = 0;
-  for (var i = 0; i < tokens.length; ++i) {
-    if (typeof tokens[i] == 'string') {
-      buffer.push(tokens[i]);
+  const mergedTokens: Array<string | number> = [];
+  
+  const last = <T>(arr: T[]): T | undefined => arr[arr.length - 1];
+  
+  for (const token of tokens) {
+    if (typeof token === 'string' && typeof last(mergedTokens) === 'string') {
+      mergedTokens.push(mergedTokens.pop() + token);
     } else {
-      text = buffer.join('');
-      if (text) {
-        mergedTokens.push(text);
-      }
-      buffer.length = 0;
-      mergedTokens.push(tokens[i]);
+      mergedTokens.push(token);
     }
   }
-  text = buffer.join('');
-  if (text) {
-    mergedTokens.push(text);
-  }
-  buffer.length = 0;
 
   return mergedTokens;
-}
-
-/**
- * Generate a unique ID.  This should be globally unique.
- * 87 characters ^ 20 length > 128 bits (better than a UUID).
- * @return {string} A globally unique ID string.
- */
-export function genUid() {
-  var length = 20;
-  var soupLength = Blockly.utils.genUid.soup_.length;
-  var id = [];
-  for (var i = 0; i < length; i++) {
-    id[i] = Blockly.utils.genUid.soup_.charAt(Math.random() * soupLength);
-  }
-  return id.join('');
 }
 
 /**
@@ -622,9 +642,30 @@ export function genUid() {
  * 'problematic' characters from this soup will be denied.  That's your failure
  * to properly escape in your own environment.  Issues #251, #625, #682, #1304.
  * @private
+ *
+ * TODO Investigate why so many weird characters are needed
  */
-Blockly.utils.genUid.soup_ = '!#$%()*+,-./:;=?@[]^_`{|}~' +
+const UID_SOUP = '!#$%()*+,-./:;=?@[]^_`{|}~' +
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+
+const randomChar = (soup: string) => soup.charAt(Math.random() * soup.length);
+
+/**
+ * Generate a unique ID. This should be globally unique.
+ * 87 characters ^ 20 length > 128 bits (better than a UUID).
+ * @return {string} A globally unique ID string.
+ */
+export function genUid() {
+  const length = 20;
+  const id: string[] = [];
+
+  for (let i = 0; i < length; i++) {
+    id[i] = randomChar(UID_SOUP);
+  }
+
+  return id.join('');
+}
 
 /**
  * Wrap text to the specified width.
@@ -632,11 +673,13 @@ Blockly.utils.genUid.soup_ = '!#$%()*+,-./:;=?@[]^_`{|}~' +
  * @param {number} limit Width to wrap each line.
  * @return {string} Wrapped text.
  */
-export function wrap(text, limit) {
-  var lines = text.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    lines[i] = Blockly.utils.wrapLine_(lines[i], limit);
+export function wrap(text: string, limit: number): string {
+  const lines = text.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    lines[i] = wrapLine_(lines[i], limit);
   }
+
   return lines.join('\n');
 }
 
@@ -647,34 +690,33 @@ export function wrap(text, limit) {
  * @return {string} Wrapped text.
  * @private
  */
-export function wrapLine_(text, limit) {
-  if (text.length <= limit) {
-    // Short text, no need to wrap.
-    return text;
-  }
+export function wrapLine_(text: string, limit: number): string {
+
+  // Short text, no need to wrap.
+  if (text.length <= limit) return text;
+
   // Split the text into words.
-  var words = text.trim().split(/\s+/);
+  const words = text.trim().split(/\s+/);
+
   // Set limit to be the length of the largest word.
-  for (var i = 0; i < words.length; i++) {
-    if (words[i].length > limit) {
-      limit = words[i].length;
-    }
+  for (const word of words) {
+    if (word.length > limit) limit = word.length;
   }
 
-  var lastScore;
-  var score = -Infinity;
-  var lastText;
-  var lineCount = 1;
+  let lastScore: number;
+  let score = -Infinity;
+  let lastText: string;
+  let lineCount = 1;
   do {
     lastScore = score;
     lastText = text;
     // Create a list of booleans representing if a space (false) or
     // a break (true) appears after each word.
-    var wordBreaks = [];
+    let wordBreaks: boolean[] = [];
     // Seed the list with evenly spaced linebreaks.
-    var steps = words.length / lineCount;
-    var insertedBreaks = 1;
-    for (var i = 0; i < words.length - 1; i++) {
+    const steps = words.length / lineCount;
+    let insertedBreaks = 1;
+    for (let i = 0; i < words.length - 1; i++) {
       if (insertedBreaks < (i + 1.5) / steps) {
         insertedBreaks++;
         wordBreaks[i] = true;
@@ -682,11 +724,12 @@ export function wrapLine_(text, limit) {
         wordBreaks[i] = false;
       }
     }
-    wordBreaks = Blockly.utils.wrapMutate_(words, wordBreaks, limit);
-    score = Blockly.utils.wrapScore_(words, wordBreaks, limit);
-    text = Blockly.utils.wrapToText_(words, wordBreaks);
+    wordBreaks = wrapMutate_(words, wordBreaks, limit);
+    score = wrapScore_(words, wordBreaks, limit);
+    text = wrapToText_(words, wordBreaks);
     lineCount++;
   } while (score > lastScore);
+  
   return lastText;
 }
 

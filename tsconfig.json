@@ -1,6 +1,7 @@
 {
     "include": [ "core/**/*" ],
     "compilerOptions": {
+        "strictNullChecks": true,
         "target": "ES2021",
         "lib": [
             "DOM",
