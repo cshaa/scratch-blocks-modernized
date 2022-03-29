@@ -121,7 +121,7 @@ export function addClass(element: Element, className: string): boolean
  * @param {string} className Name of class to remove.
  * @return {boolean} True if class was removed, false if never present.
  */
-export function removeClass(element: Element, className: string)
+export function removeClass(element: Element, className: string): boolean
 {
   if (!element.classList.contains(className)) return false;
 
@@ -298,7 +298,7 @@ export function mouseToSvg(e: MouseEvent, svg: SVGSVGElement, matrix?: SVGMatrix
   svgPoint.x = e.clientX;
   svgPoint.y = e.clientY;
 
-  matrix = matrix ?? svg.getScreenCTM().inverse();
+  matrix = matrix ?? svg.getScreenCTM()!.inverse();
 
   return svgPoint.matrixTransform(matrix);
 }
@@ -873,11 +873,11 @@ export function is3dSupported(): boolean {
   const el = document.createElement('p');
   let has3d = 'none';
   const transforms = {
-    'webkitTransform': '-webkit-transform',
-    'OTransform': '-o-transform',
-    'msTransform': '-ms-transform',
-    'MozTransform': '-moz-transform',
-    'transform': 'transform'
+    webkitTransform: '-webkit-transform',
+    OTransform: '-o-transform',
+    msTransform: '-ms-transform',
+    MozTransform: '-moz-transform',
+    transform: 'transform'
   };
 
   // Add it to the body to get the computed style.

@@ -24,7 +24,6 @@
  */
 'use strict';
 
-goog.provide('Blockly.constants');
 
 
 /**
@@ -250,7 +249,7 @@ export const DRAG_STICKY = Drag.Sticky as const;
  * ENUM for inside the non-sticky DRAG_RADIUS, for differentiating between
  * clicks and drags.
  * @const
- * !FIXME wtf. DRAG_StICKY === DRAG_BEGIN
+ * !FIXME wtf. DRAG_STICKY === DRAG_BEGIN
  */
 export const DRAG_BEGIN = 1 as const;
 
@@ -273,50 +272,84 @@ export const OPPOSITE_TYPE: { [t in BlockConnection]: BlockConnection } = {
   [BlockConnection.DummyInput]: BlockConnection.DummyInput,
 };
 
+
+/**
+ * Enum for the position of toolbox.
+ * @const
+ */
+export enum ToolboxPosition {
+  Top = 0,
+  Bottom = 1,
+  Left = 2,
+  Right = 3,
+}
+
 /**
  * ENUM for toolbox and flyout at top of screen.
  * @const
+ * @deprecated
  */
-export const TOOLBOX_AT_TOP = 0 as const;
+export const TOOLBOX_AT_TOP = ToolboxPosition.Top as const;
 
 /**
  * ENUM for toolbox and flyout at bottom of screen.
  * @const
+ * @deprecated
  */
-export const TOOLBOX_AT_BOTTOM = 1 as const;
+export const TOOLBOX_AT_BOTTOM = ToolboxPosition.Bottom as const;
 
 /**
  * ENUM for toolbox and flyout at left of screen.
  * @const
+ * @deprecated
  */
-export const TOOLBOX_AT_LEFT = 2 as const;
+export const TOOLBOX_AT_LEFT = ToolboxPosition.Left as const;
 
 /**
  * ENUM for toolbox and flyout at right of screen.
  * @const
+ * @deprecated
  */
-export const TOOLBOX_AT_RIGHT = 3 as const;
+export const TOOLBOX_AT_RIGHT = ToolboxPosition.Right as const;
+
+
+/**
+ * Enum for the shapes of reporters.
+ */
+export enum OutputShape {
+  /** Hexagonal shape for booleans / predicates. */
+  Hexagonal = 1,
+
+  /** Rounded shape for numbers. */
+  Round = 2,
+
+  /** Rectangular shape for strings & other values. */
+  Square = 3,
+}
 
 /**
  * ENUM for output shape: hexagonal (booleans/predicates).
  * @const
+ * @deprecated
  */
-export const OUTPUT_SHAPE_HEXAGONAL = 1 as const;
+export const OUTPUT_SHAPE_HEXAGONAL = OutputShape.Hexagonal as const;
 
 /**
  * ENUM for output shape: rounded (numbers).
  * @const
+ * @deprecated
  */
-export const OUTPUT_SHAPE_ROUND = 2 as const;
+export const OUTPUT_SHAPE_ROUND = OutputShape.Round as const;
 
 /**
  * ENUM for output shape: squared (any/all values; strings).
  * @const
+ * @deprecated
  */
-export const OUTPUT_SHAPE_SQUARE = 3 as const;
+export const OUTPUT_SHAPE_SQUARE = OutputShape.Square as const;
 
 /**
- * ENUM for categories.
+ * Enum for block categories.
  * @const
  */
 export enum Categories {
@@ -334,24 +367,43 @@ export enum Categories {
 }
 
 /**
+ * Enum representing the possible areas for deleting blocks.
+ */
+export enum DeleteArea {
+  /** An event is not in any delete areas. Null for backwards compatibility reasons. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  None = null as any,
+
+  /** An event is in the delete area of the trash can. */
+  Trash = 1,
+
+  /** An event is in the delete area of the toolbox or flyout.*/
+  Toolbox = 2,
+
+}
+
+/**
  * ENUM representing that an event is not in any delete areas.
  * Null for backwards compatibility reasons.
  * @const
+ * @deprecated
  */
-export const DELETE_AREA_NONE: null = null;
+export const DELETE_AREA_NONE = DeleteArea.None;
 
 /**
  * ENUM representing that an event is in the delete area of the trash can.
  * @const
+ * @deprecated
  */
-export const DELETE_AREA_TRASH = 1 as const;
+export const DELETE_AREA_TRASH = DeleteArea.Trash;
 
 /**
  * ENUM representing that an event is in the delete area of the toolbox or
  * flyout.
  * @const
+ * @deprecated
  */
-export const DELETE_AREA_TOOLBOX = 2 as const;
+export const DELETE_AREA_TOOLBOX = DeleteArea.Toolbox;
 
 /**
  * String for use in the "custom" attribute of a category in toolbox xml.

@@ -56,7 +56,7 @@ goog.require('goog.math.Coordinate');
  */
 export class Gesture
 {
-  constructor (e, creatorWorkspace)
+  constructor(e: Event, creatorWorkspace: WorkspaceSvg)
   {
     this.creatorWorkspace_ = creatorWorkspace;
     this.mostRecentEvent_ = e;

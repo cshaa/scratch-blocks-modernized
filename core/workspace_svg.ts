@@ -24,8 +24,6 @@
  */
 'use strict';
 
-goog.provide('Blockly.WorkspaceSvg');
-
 // TODO(scr): Fix circular dependencies
 //goog.require('Blockly.BlockSvg');
 goog.require('Blockly.Colours');

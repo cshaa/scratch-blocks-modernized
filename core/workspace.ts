@@ -24,7 +24,7 @@
  */
 'use strict';
 
-goog.provide('Blockly.Workspace');
+import { genUid } from "./utils";
 
 goog.require('Blockly.VariableMap');
 goog.require('Blockly.WorkspaceComment');
@@ -38,14 +38,18 @@ goog.require('goog.math');
  * @param {!Blockly.Options=} opt_options Dictionary of options.
  * @constructor
  */
-Blockly.Workspace = function(opt_options) {
-  /** @type {string} */
-  this.id = Blockly.utils.genUid();
-  Blockly.Workspace.WorkspaceDB_[this.id] = this;
-  /** @type {!Blockly.Options} */
-  this.options = opt_options || {};
-  /** @type {boolean} */
-  this.RTL = !!this.options.RTL;
+export class Workspace {
+  constructor (public options: any = {}) {
+    Workspace.WorkspaceDB_[this.id] = this;
+  }
+
+  /** Database of all workspaces. */
+  private static WorkspaceDB_ = Object.create(null);
+
+  id: string = genUid();
+
+  RTL: boolean = !!this.options.RTL;
+
   /** @type {boolean} */
   this.horizontalLayout = !!this.options.horizontalLayout;
   /** @type {number} */
@@ -648,11 +652,6 @@ Blockly.Workspace.prototype.getVariableMap = function() {
   return this.variableMap_;
 };
 
-/**
- * Database of all workspaces.
- * @private
- */
-Blockly.Workspace.WorkspaceDB_ = Object.create(null);
 
 /**
  * Find the workspace with the specified ID.
