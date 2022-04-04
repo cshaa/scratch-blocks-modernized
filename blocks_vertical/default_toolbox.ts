@@ -18,7 +18,7 @@
  * limitations under the License.
  */
 
-'use strict';
+import { ToolboxRoot } from '../core/toolbox';
 
 goog.provide('Blockly.Blocks.defaultToolbox');
 

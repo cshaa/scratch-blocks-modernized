@@ -22,9 +22,6 @@
  * @fileoverview Toolbox from whence to create blocks.
  * @author fraser@google.com (Neil Fraser)
  */
-'use strict';
-
-goog.provide('Blockly.Toolbox');
 
 goog.require('Blockly.Events.Ui');
 goog.require('Blockly.HorizontalFlyout');
@@ -40,6 +37,30 @@ goog.require('goog.math.Rect');
 goog.require('goog.style');
 goog.require('goog.ui.tree.TreeControl');
 goog.require('goog.ui.tree.TreeNode');
+
+
+// eslint-disable-next-line no-use-before-define
+export type ToolboxItem = ToolboxBlock | ToolboxCategory;
+
+export interface ToolboxBlock {
+  kind: 'block';
+  type: string;
+  fields?: {
+    [k: string]: string;
+  };
+}
+
+export interface ToolboxCategory {
+  kind: 'category';
+  name: string;
+  contents: ToolboxItem[];
+}
+
+export interface ToolboxRoot {
+  kind: 'categoryToolbox',
+  content: ToolboxItem[];
+}
+
 
 
 /**

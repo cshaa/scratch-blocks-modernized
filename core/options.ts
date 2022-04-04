@@ -25,6 +25,8 @@
 
 import { Colours } from './colours';
 import { ToolboxPosition } from './constants';
+import { ToolboxRoot } from './toolbox';
+import { Workspace } from './workspace';
 
 
 export interface ZoomOptions {
@@ -54,12 +56,36 @@ export interface ZoomOptions {
    * Defaults to 1.2.
    */
   scaleSpeed: number,
+}
+
+export interface GridOptions {
+  /**
+   * The most important grid property is `spacing` which defines the distance between
+   * the grid's points. The default value is 0, which results in no grid.
+   */
+  spacing: number,
 
   /**
-   * Set to true to enable pinch to zoom support on touch devices.
-   * Defaults to true if either the wheel or controls option is set to true.
+   * The `length` property is a number that defines the shape of the grid points.
+   * A length of 0 results in an invisible grid (but still one that may be snapped to),
+   * a length of 1 (the default value) results in dots, a longer length results in
+   * crosses, and a length equal or greater than the spacing results in graph paper.
    */
-  pinch: boolean,
+  length: number,
+
+  /**
+   * The `colour` property is a string that sets the colour of the points.
+   * Note the British spelling. Use any CSS-compatible format, including `#f00`,
+   * `#ff0000`, or `rgb(255, 0, 0)`. The default value is `#888`.
+   */
+  colour: string,
+
+  /**
+   * The `snap` property is a boolean that sets whether blocks should
+   * snap to the nearest grid point when placed on the workspace.
+   * The default value is `false`.
+   */
+  snap: boolean,
 }
 
 export interface Options {
@@ -110,12 +136,12 @@ export interface Options {
    * string, XML or JSON	Tree structure of categories and blocks available to the user.
    * See defining the toolbox for more information.
    */
-  toolbox: unknown; // ! Toolbox
+  toolbox: ToolboxRoot;
 
   colours: Colours;
 
   /** Configures a grid which blocks may snap to. See https://developers.google.com/blockly/guides/configure/web/grid */
-  gridOptions: unknown; // ! GridOptions
+  gridOptions: GridOptions;
 
   /** Configures zooming behaviour. */
   zoomOptions: ZoomOptions;
@@ -126,13 +152,13 @@ export interface Options {
   parentWorkspace: Workspace | undefined;
 
   /** If set, sets the translation of the workspace to match the scrollbars. */
-  setMetrics: Function | undefined;
+  setMetrics?: () => void; // TODO
 
   /**
    * Return an object with the metrics required to size the workspace.
    * @return {Object} Contains size and position metrics, or null.
    */
-  getMetrics: Function | undefined;
+  getMetrics?: () => void; // TODO
 }
 
 export interface Preferences
@@ -153,21 +179,30 @@ extends Omit<Partial<Options>, 'hasCategories' | 'toolboxPosition' | 'colours'>
 /**
  * Parse the user-specified options, using reasonable defaults where behaviour
  * is unspecified.
- * @param {!Object} options Dictionary of options.  Specification:
+ * @param {!Preferences} options Dictionary of options.  Specification:
  *   https://developers.google.com/blockly/guides/get-started/web#configuration
+ * @param {!ToolboxRoot} defaultToolbox The default toolbox from
+ *   `blocks_horizontal/default_toolbox.ts` or `blocks_vertical/default_toolbox.ts`
  * @constructor
  */
-export function fillInDefaults(options: Preferences): Options {
-  const { parentWorkspace, toolbox, setMetrics, getMetrics } = options;
+export function fillInDefaults(options: Preferences, defaultToolbox: ToolboxRoot): Options {
+  const {
+    parentWorkspace,
+    setMetrics,
+    getMetrics,
+    colours,
+    zoomOptions,
+    gridOptions,
+  } = options;
   let {
     readOnly,
-    colours,
     languageTree,
     hasTrashcan,
     hasComments,
     disable,
     hasSounds,
     collapse,
+    toolbox,
     rtl,
     horizontalLayout,
     toolboxPosition,
@@ -191,16 +226,9 @@ export function fillInDefaults(options: Preferences): Options {
     hasSounds = false;
   }
 
-  // // parse default toolbox from xml 🤮
-  // if (options.toolbox === undefined && Blockly.Blocks.defaultToolbox !== undefined) {
-  //   var oParser = new DOMParser();
-  //   var dom = oParser.parseFromString(Blockly.Blocks.defaultToolbox, 'text/xml');
-  //   options['toolbox'] = dom.documentElement;
-  // }
+  toolbox ??= defaultToolbox;
 
-  languageTree = parseToolboxTree(toolbox);
-
-  // https://github.com/microsoft/TypeScript/issues/48473
+  // https://github.com/microsoft/TypeScript/issues/40359
   hasCategories = hasCategories ??
     (languageTree !== undefined && languageTree.getElementsByTagName('category').length > 0);
   
@@ -217,6 +245,7 @@ export function fillInDefaults(options: Preferences): Options {
   hasCss ??= true;
   oneBasedIndex ??= true;
 
+  toolboxPosition ??= 'start';
   
   if (toolboxPosition === 'start' || toolboxPosition === 'end') {
     if (horizontalLayout) {
@@ -244,17 +273,17 @@ export function fillInDefaults(options: Preferences): Options {
     hasComments,
     disable,
     readOnly,
-    pathToMedia : pathToMedia,
-    hasCategories : hasCategories,
-    hasScrollbars : hasScrollbars,
-    hasTrashcan : hasTrashcan,
-    hasSounds : hasSounds,
-    hasCss : hasCss,
-    horizontalLayout : horizontalLayout,
-    languageTree : languageTree,
-    gridOptions : parseGridOptions(options),
-    zoomOptions : parseZoomOptions(options),
-    toolboxPosition : toolboxPosition,
+    pathToMedia,
+    hasCategories,
+    hasScrollbars,
+    hasTrashcan,
+    hasSounds,
+    hasCss,
+    horizontalLayout,
+    languageTree,
+    gridOptions : parseGridOptions(gridOptions),
+    zoomOptions : parseZoomOptions(zoomOptions),
+    toolboxPosition,
   };
 }
 
@@ -264,88 +293,35 @@ export function fillInDefaults(options: Preferences): Options {
  * Parse the user-specified zoom options, using reasonable defaults where
  * behaviour is unspecified.  See zoom documentation:
  *   https://developers.google.com/blockly/guides/configure/web/zoom
- * @param {!Object} options Dictionary of options.
- * @return {!Object} A dictionary of normalized options.
+ * @param {!ZoomOptions} o Dictionary of options.
+ * @return {!ZoomOptions} A dictionary of normalized options.
  * @private
  */
-export function parseZoomOptions(options?: Partial<ZoomOptions>): ZoomOptions {
-  options = options ?? {};
-
-  var zoomOptions = {};
-  if (zoom['controls'] === undefined) {
-    zoomOptions.controls = false;
-  } else {
-    zoomOptions.controls = !!zoom['controls'];
-  }
-  if (zoom['wheel'] === undefined) {
-    zoomOptions.wheel = false;
-  } else {
-    zoomOptions.wheel = !!zoom['wheel'];
-  }
-  if (zoom['startScale'] === undefined) {
-    zoomOptions.startScale = 1;
-  } else {
-    zoomOptions.startScale = parseFloat(zoom['startScale']);
-  }
-  if (zoom['maxScale'] === undefined) {
-    zoomOptions.maxScale = 3;
-  } else {
-    zoomOptions.maxScale = parseFloat(zoom['maxScale']);
-  }
-  if (zoom['minScale'] === undefined) {
-    zoomOptions.minScale = 0.3;
-  } else {
-    zoomOptions.minScale = parseFloat(zoom['minScale']);
-  }
-  if (zoom['scaleSpeed'] === undefined) {
-    zoomOptions.scaleSpeed = 1.2;
-  } else {
-    zoomOptions.scaleSpeed = parseFloat(zoom['scaleSpeed']);
-  }
-  return zoomOptions;
+export function parseZoomOptions(o?: Partial<ZoomOptions>): ZoomOptions {
+  return {
+    controls: o?.controls ?? false,
+    wheel: o?.wheel ?? false,
+    startScale: o?.startScale ?? 1,
+    maxScale: o?.maxScale ?? 3,
+    minScale: o?.minScale ?? 0.3,
+    scaleSpeed: o?.scaleSpeed ?? 1.2,
+  };
 }
 
 /**
  * Parse the user-specified grid options, using reasonable defaults where
  * behaviour is unspecified. See grid documentation:
  *   https://developers.google.com/blockly/guides/configure/web/grid
- * @param {!Object} options Dictionary of options.
- * @return {!Object} A dictionary of normalized options.
+ * @param {!GridOptions} o Dictionary of options.
+ * @return {!GridOptions} A dictionary of normalized options.
  * @private
  */
-export function parseGridOptions(options) {
-  var grid = options['grid'] || {};
-  var gridOptions = {};
-  gridOptions.spacing = parseFloat(grid['spacing']) || 0;
-  gridOptions.colour = grid['colour'] || '#888';
-  gridOptions.length = parseFloat(grid['length']) || 1;
-  gridOptions.snap = gridOptions.spacing > 0 && !!grid['snap'];
-  return gridOptions;
-}
-
-/**
- * Parse the provided toolbox tree into a consistent DOM format.
- * @param {Node|string} tree DOM tree of blocks, or text representation of same.
- * @return {Node} DOM tree of blocks, or null.
- */
-export function parseToolboxTree(tree) {
-  if (tree) {
-    if (typeof tree != 'string') {
-      if (typeof XSLTProcessor == 'undefined' && tree.outerHTML) {
-        // In this case the tree will not have been properly built by the
-        // browser. The HTML will be contained in the element, but it will
-        // not have the proper DOM structure since the browser doesn't support
-        // XSLTProcessor (XML -> HTML). This is the case in IE 9+.
-        tree = tree.outerHTML;
-      } else if (!(tree instanceof Element)) {
-        tree = null;
-      }
-    }
-    if (typeof tree == 'string') {
-      tree = Blockly.Xml.textToDom(tree);
-    }
-  } else {
-    tree = null;
-  }
-  return tree;
+export function parseGridOptions(o?: Partial<GridOptions>): GridOptions {
+  const spacing = o?.spacing ?? 0;
+  return {
+    spacing,
+    length: o?.length ?? 1,
+    colour: o?.colour ?? '#888',
+    snap: (o?.snap ?? false) && spacing > 0,
+  };
 }

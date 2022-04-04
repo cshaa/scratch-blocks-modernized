@@ -18,43 +18,56 @@
  * limitations under the License.
  */
 
-'use strict';
-
-goog.provide('Blockly.Blocks.defaultToolbox');
-
-goog.require('Blockly.Blocks');
 
 /**
- * @fileoverview Provide a default toolbox XML.
+ * @fileoverview Provide a default toolbox.
  */
 
-Blockly.Blocks.defaultToolbox = '<xml id="toolbox-categories" style="display: none">' +
+import { ToolboxRoot } from '../core/toolbox';
+
+
+export const defaultToolbox: ToolboxRoot = {
+  kind: 'categoryToolbox',
+  content: [
+    {
+      kind: 'category',
+      name: 'Events',
+      contents: [
+        { kind: 'block', type: 'event_whenflagclicked' },
+        { kind: 'block', type: 'event_whenbroadcastreceived' },
+
+      ],
+    }
+  ],
+};
+
+'<xml id="toolbox-categories" style="display: none">' +
     '<category name="Events">' +
-        '<block type="event_whenflagclicked"></block>' +
-        '<block type="event_whenbroadcastreceived">' +
+      '<block type="event_whenflagclicked"></block>' +
+      '<block type="event_whenbroadcastreceived">' +
         '<value name="CHOICE">' +
-        '<shadow type="dropdown_whenbroadcast">' +
-        '<field name="CHOICE">blue</field>' +
-        '</shadow>' +
+          '<shadow type="dropdown_whenbroadcast">' +
+            '<field name="CHOICE">blue</field>' +
+          '</shadow>' +
         '</value>' +
-        '</block>' +
-        '<block type="event_broadcast">' +
+      '</block>' +
+      '<block type="event_broadcast">' +
         '<value name="CHOICE">' +
-        '<shadow type="dropdown_broadcast">' +
-        '<field name="CHOICE">blue</field>' +
-        '</shadow>' +
+          '<shadow type="dropdown_broadcast">' +
+            '<field name="CHOICE">blue</field>' +
+          '</shadow>' +
         '</value>' +
-        '</block>' +
+      '</block>' +
     '</category>' +
     '<category name="Control">' +
-        '<block type="control_forever"></block>' +
-        '<block type="control_repeat">' +
+      '<block type="control_forever"></block>' +
+      '<block type="control_repeat">' +
         '<value name="TIMES">' +
-        '<shadow type="math_whole_number">' +
-        '<field name="NUM">4</field>' +
-        '</shadow>' +
+          '<shadow type="math_whole_number">' +
+            '<field name="NUM">4</field>' +
+          '</shadow>' +
         '</value>' +
-        '</block>' +
+      '</block>' +
         '<block type="control_stop"></block>' +
         '<block type="control_wait">' +
         '<value name="DURATION">' +

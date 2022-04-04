@@ -24,6 +24,7 @@
  */
 'use strict';
 
+import { Options } from "./options";
 import { genUid } from "./utils";
 
 goog.require('Blockly.VariableMap');
@@ -39,63 +40,62 @@ goog.require('goog.math');
  * @constructor
  */
 export class Workspace {
-  constructor (public options: any = {}) {
-    Workspace.WorkspaceDB_[this.id] = this;
+  constructor (public options: Options) {
+    Workspace.WorkspaceDB.set(this.id, this);
   }
 
   /** Database of all workspaces. */
-  private static WorkspaceDB_ = Object.create(null);
+  private static WorkspaceDB = new Map<string, Workspace>();
 
-  id: string = genUid();
-
-  RTL: boolean = !!this.options.RTL;
-
-  /** @type {boolean} */
-  this.horizontalLayout = !!this.options.horizontalLayout;
-  /** @type {number} */
-  this.toolboxPosition = this.options.toolboxPosition;
+  id = genUid();
+  rtl = this.options.rtl;
+  horizontalLayout = this.options.horizontalLayout;
+  toolboxPosition = this.options.toolboxPosition;
 
   /**
    * @type {!Array.<!Blockly.Block>}
    * @private
    */
-  this.topBlocks_ = [];
+  topBlocks_ = [];
+
   /**
    * @type {!Array.<!Blockly.WorkspaceComment>}
    * @private
    */
-  this.topComments_ = [];
+  topComments_ = [];
+
   /**
    * @type {!Object}
    * @private
    */
-  this.commentDB_ = Object.create(null);
+  commentDB_ = Object.create(null);
+
   /**
    * @type {!Array.<!Function>}
    * @private
    */
-  this.listeners_ = [];
+  listeners_ = [];
 
   /** @type {!Array.<!Function>} */
-  this.tapListeners_ = [];
+  tapListeners_ = [];
 
   /**
    * @type {!Array.<!Blockly.Events.Abstract>}
    * @protected
    */
-  this.undoStack_ = [];
+  undoStack_ = [];
 
   /**
    * @type {!Array.<!Blockly.Events.Abstract>}
    * @protected
    */
-  this.redoStack_ = [];
+  redoStack_ = [];
 
   /**
    * @type {!Object}
    * @private
    */
-  this.blockDB_ = Object.create(null);
+  blockDB_ = Object.create(null);
 
   /**
    * @type {!Blockly.VariableMap}
@@ -104,7 +104,7 @@ export class Workspace {
    * that are not currently in use.
    * @private
    */
-  this.variableMap_ = new Blockly.VariableMap(this);
+  variableMap_ = new VariableMap(this);
 
   /**
    * Blocks in the flyout can refer to variables that don't exist in the main
@@ -116,7 +116,7 @@ export class Workspace {
    * @type {!Blockly.VariableMap}
    * @private
    */
-  this.potentialVariableMap_ = null;
+  potentialVariableMap_ = null;
 };
 
 /**
