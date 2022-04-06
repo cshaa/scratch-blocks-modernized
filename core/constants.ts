@@ -132,7 +132,7 @@ export const HTML_NS = 'http://www.w3.org/1999/xhtml' as const;
  * Enum for a right- or left-facing value input and for up- or down-facing block stacks.
  * @const
  */
-export enum BlockConnection {
+export enum ConnectionType {
   /** Right-facing value input.  E.g. 'set item to' or 'return'. */
   Input = 1,
 
@@ -154,35 +154,35 @@ export enum BlockConnection {
  * @const
  * @deprecated
  */
-export const INPUT_VALUE = BlockConnection.Input as const;
+export const INPUT_VALUE = ConnectionType.Input as const;
 
 /**
  * ENUM for a left-facing value output.  E.g. 'random fraction'.
  * @const
  * @deprecated
  */
-export const OUTPUT_VALUE = BlockConnection.Output as const;
+export const OUTPUT_VALUE = ConnectionType.Output as const;
 
 /**
  * ENUM for a down-facing block stack.  E.g. 'if-do' or 'else'.
  * @const
  * @deprecated
  */
-export const NEXT_STATEMENT = BlockConnection.NextStatement as const;
+export const NEXT_STATEMENT = ConnectionType.NextStatement as const;
 
 /**
  * ENUM for an up-facing block stack.  E.g. 'break out of loop'.
  * @const
  * @deprecated
  */
-export const PREVIOUS_STATEMENT = BlockConnection.PreviousStatement as const;
+export const PREVIOUS_STATEMENT = ConnectionType.PreviousStatement as const;
 
 /**
  * ENUM for an dummy input.  Used to add field(s) with no input.
  * @const
  * @deprecated
  */
-export const DUMMY_INPUT = BlockConnection.DummyInput as const;
+export const DUMMY_INPUT = ConnectionType.DummyInput as const;
 
 /**
  * Enum for left, centre and right alignment.
@@ -264,12 +264,12 @@ export const DRAG_FREE = Drag.Free as const;
  * Lookup table for determining the opposite type of a connection.
  * @const
  */
-export const OPPOSITE_TYPE: { [t in BlockConnection]: BlockConnection } = {
-  [BlockConnection.Input]: BlockConnection.Output,
-  [BlockConnection.Output]: BlockConnection.Input,
-  [BlockConnection.NextStatement]: BlockConnection.PreviousStatement,
-  [BlockConnection.PreviousStatement]: BlockConnection.NextStatement,
-  [BlockConnection.DummyInput]: BlockConnection.DummyInput,
+export const OPPOSITE_TYPE: { [t in ConnectionType]: ConnectionType } = {
+  [ConnectionType.Input]: ConnectionType.Output,
+  [ConnectionType.Output]: ConnectionType.Input,
+  [ConnectionType.NextStatement]: ConnectionType.PreviousStatement,
+  [ConnectionType.PreviousStatement]: ConnectionType.NextStatement,
+  [ConnectionType.DummyInput]: ConnectionType.DummyInput,
 };
 
 

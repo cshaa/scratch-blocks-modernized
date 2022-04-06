@@ -47,20 +47,21 @@ goog.require('goog.userAgent');
  *     text, or null to abort the change.
  * @constructor
  */
-Blockly.Field = function(text, opt_validator) {
-  this.size_ = new goog.math.Size(
-      Blockly.BlockSvg.FIELD_WIDTH,
-      Blockly.BlockSvg.FIELD_HEIGHT);
-  this.setValue(text);
-  this.setValidator(opt_validator);
+export class Field {
+  constructor(text, opt_validator) {
+    this.size_ = new goog.math.Size(
+        Blockly.BlockSvg.FIELD_WIDTH,
+        Blockly.BlockSvg.FIELD_HEIGHT);
+    this.setValue(text);
+    this.setValidator(opt_validator);
 
-  /**
-   * Maximum characters of text to display before adding an ellipsis.
-   * Same for strings and numbers.
-   * @type {number}
-   */
-  this.maxDisplayLength = Blockly.BlockSvg.MAX_DISPLAY_LENGTH;
-};
+    /**
+     * Maximum characters of text to display before adding an ellipsis.
+     * Same for strings and numbers.
+     * @type {number}
+     */
+    this.maxDisplayLength = Blockly.BlockSvg.MAX_DISPLAY_LENGTH;
+  }
 
 
 /**

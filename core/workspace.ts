@@ -24,8 +24,13 @@
  */
 'use strict';
 
+import { Block } from "./block";
 import { Options } from "./options";
 import { genUid } from "./utils";
+import { VariableMap } from "./variable_map";
+import * as ArrayUtils from "./utils/array";
+import { degToRad } from "./utils/math";
+import { Flyout } from "./flyout_base";
 
 goog.require('Blockly.VariableMap');
 goog.require('Blockly.WorkspaceComment');
@@ -56,13 +61,13 @@ export class Workspace {
    * @type {!Array.<!Blockly.Block>}
    * @private
    */
-  topBlocks_ = [];
+  private topBlocks: Block[] = [];
 
   /**
    * @type {!Array.<!Blockly.WorkspaceComment>}
    * @private
    */
-  topComments_ = [];
+  private topComments = [];
 
   /**
    * @type {!Object}
@@ -91,11 +96,7 @@ export class Workspace {
    */
   redoStack_ = [];
 
-  /**
-   * @type {!Object}
-   * @private
-   */
-  blockDB_ = Object.create(null);
+  blockDB = new Map<string, Block>();
 
   /**
    * @type {!Blockly.VariableMap}
@@ -116,97 +117,96 @@ export class Workspace {
    * @type {!Blockly.VariableMap}
    * @private
    */
-  potentialVariableMap_ = null;
-};
+  potentialVariableMap_: VariableMap | null = null;
 
-/**
- * Returns `true` if the workspace is visible and `false` if it's headless.
- * @type {boolean}
- */
-Blockly.Workspace.prototype.rendered = false;
 
-/**
- * Returns `true` if the workspace is currently in the process of a bulk clear.
- * @type {boolean}
- * @package
- */
-Blockly.Workspace.prototype.isClearing = false;
+  /**
+   * Returns `true` if the workspace is visible and `false` if it's headless.
+   * @type {boolean}
+   */
+  rendered = false;
 
-/**
- * Maximum number of undo events in stack. `0` turns off undo, `Infinity` sets it to unlimited.
- * @type {number}
- */
-Blockly.Workspace.prototype.MAX_UNDO = 1024;
+  /**
+   * Returns `true` if the workspace is currently in the process of a bulk clear.
+   * @type {boolean}
+   * @package
+   */
+  isClearing = false;
 
-// TODO (#1354) Update this function when it is fixed upstream
-/**
- * Refresh the toolbox. This is a no-op in a non-rendered workspace,
- * but may be overriden by subclasses.
- * @private
- */
-Blockly.Workspace.prototype.refreshToolboxSelection_ = function() {
-  // No-op. Overriden by subclass.
-};
+  /**
+   * Maximum number of undo events in stack. `0` turns off undo, `Infinity` sets it to unlimited.
+   * @type {number}
+   */
+  MAX_UNDO = 1024;
 
-/**
- * Dispose of this workspace.
- * Unlink from all DOM elements to prevent memory leaks.
- */
-Blockly.Workspace.prototype.dispose = function() {
-  this.listeners_.length = 0;
-  this.clear();
-  // Remove from workspace database.
-  delete Blockly.Workspace.WorkspaceDB_[this.id];
-};
+  // TODO (#1354) Update this function when it is fixed upstream
+  /**
+   * Refresh the toolbox. This is a no-op in a non-rendered workspace,
+   * but may be overriden by subclasses.
+   * @private
+   */
+  refreshToolboxSelection_ = function() {
+    // No-op. Overriden by subclass.
+  };
 
-/**
- * Angle away from the horizontal to sweep for blocks.  Order of execution is
- * generally top to bottom, but a small angle changes the scan to give a bit of
- * a left to right bias (reversed in RTL).  Units are in degrees.
- * See: http://tvtropes.org/pmwiki/pmwiki.php/Main/DiagonalBilling.
- */
-Blockly.Workspace.SCAN_ANGLE = 3;
+  /**
+   * Dispose of this workspace.
+   * Unlink from all DOM elements to prevent memory leaks.
+   */
+  dispose = function() {
+    this.listeners_.length = 0;
+    this.clear();
+    // Remove from workspace database.
+    Workspace.WorkspaceDB.delete(this.id);
+  };
 
-/**
- * Add a block to the list of top blocks.
- * @param {!Blockly.Block} block Block to add.
- */
-Blockly.Workspace.prototype.addTopBlock = function(block) {
-  this.topBlocks_.push(block);
-};
+  /**
+   * Angle away from the horizontal to sweep for blocks.  Order of execution is
+   * generally top to bottom, but a small angle changes the scan to give a bit of
+   * a left to right bias (reversed in RTL).  Units are in degrees.
+   * See: http://tvtropes.org/pmwiki/pmwiki.php/Main/DiagonalBilling.
+   */
+  SCAN_ANGLE = 3;
 
-/**
- * Remove a block from the list of top blocks.
- * @param {!Blockly.Block} block Block to remove.
- */
-Blockly.Workspace.prototype.removeTopBlock = function(block) {
-  if (!goog.array.remove(this.topBlocks_, block)) {
-    throw 'Block not present in workspace\'s list of top-most blocks.';
-  }
-};
+  /**
+   * Add a block to the list of top blocks.
+   * @param {!Blockly.Block} block Block to add.
+   */
+  addTopBlock(block: Block) {
+    this.topBlocks.push(block);
+  };
 
-/**
- * Finds the top-level blocks and returns them.  Blocks are optionally sorted
- * by position; top to bottom (with slight LTR or RTL bias).
- * @param {boolean} ordered Sort the list if true.
- * @return {!Array.<!Blockly.Block>} The top-level block objects.
- */
-Blockly.Workspace.prototype.getTopBlocks = function(ordered) {
-  // Copy the topBlocks_ list.
-  var blocks = [].concat(this.topBlocks_);
-  if (ordered && blocks.length > 1) {
-    var offset = Math.sin(goog.math.toRadians(Blockly.Workspace.SCAN_ANGLE));
-    if (this.RTL) {
-      offset *= -1;
+  /**
+   * Remove a block from the list of top blocks.
+   * @param {!Blockly.Block} block Block to remove.
+   */
+  removeTopBlock(block: Block) {
+    if (ArrayUtils.remove(this.topBlocks, block))
+      throw 'Block not present in workspace\'s list of top-most blocks.';
+  };
+
+  /**
+   * Finds the top-level blocks and returns them.  Blocks are optionally sorted
+   * by position; top to bottom (with slight LTR or RTL bias).
+   * @param {boolean} ordered Sort the list if true.
+   * @return {!Array.<!Blockly.Block>} The top-level block objects.
+   */
+  getTopBlocks(ordered: boolean) {
+    // Copy the topBlocks list.
+    var blocks = [...this.topBlocks];
+
+    if (ordered && blocks.length > 1) {
+      var offset = Math.sin(degToRad(this.SCAN_ANGLE));
+      if (this.rtl) offset *= -1;
+      
+      blocks.sort((a, b) => {
+        const aXY = a.getRelativeToSurfaceXY();
+        const bXY = b.getRelativeToSurfaceXY();
+        return (aXY.y + offset * aXY.x) - (bXY.y + offset * bXY.x);
+      });
     }
-    blocks.sort(function(a, b) {
-      var aXY = a.getRelativeToSurfaceXY();
-      var bXY = b.getRelativeToSurfaceXY();
-      return (aXY.y + offset * aXY.x) - (bXY.y + offset * bXY.x);
-    });
-  }
-  return blocks;
-};
+    return blocks;
+  };
 
 /**
  * Add a comment to the list of top comments.
@@ -575,18 +575,18 @@ Blockly.Workspace.prototype.fireChangeListener = function(event) {
   }
 };
 
-/**
- * Find the block on this workspace with the specified ID.
- * @param {string} id ID of block to find.
- * @return {Blockly.Block} The sought after block or null if not found.
- */
-Blockly.Workspace.prototype.getBlockById = function(id) {
-  var block = this.blockDB_[id];
-  if (!block && this.getFlyout() && this.getFlyout().getWorkspace()) {
-    block = this.getFlyout().getWorkspace().blockDB_[id];
-  }
-  return block || null;
-};
+  /**
+   * Find the block on this workspace with the specified ID.
+   * @param {string} id ID of block to find.
+   * @return {Blockly.Block} The sought after block or null if not found.
+   */
+  getBlockById(id: string): Block {
+    let block = this.blockDB[id];
+    if (!block && this.getFlyout() && this.getFlyout().getWorkspace()) {
+      block = this.getFlyout().getWorkspace().blockDB[id];
+    }
+    return block || null;
+  };
 
 /**
  * Find the comment on this workspace with the specified ID.
@@ -599,14 +599,14 @@ Blockly.Workspace.prototype.getCommentById = function(id) {
   return this.commentDB_[id] || null;
 };
 
-/**
- * Getter for the flyout associated with this workspace.  This is null in a
- * non-rendered workspace, but may be overriden by subclasses.
- * @return {Blockly.Flyout} The flyout on this workspace.
- */
-Blockly.Workspace.prototype.getFlyout = function() {
-  return null;
-};
+  /**
+   * Getter for the flyout associated with this workspace.  This is null in a
+   * non-rendered workspace, but may be overriden by subclasses.
+   * @return {Blockly.Flyout} The flyout on this workspace.
+   */
+  getFlyout(): Flyout | null {
+    return null;
+  };
 
 /**
  * Checks whether all value and statement inputs in the workspace are filled

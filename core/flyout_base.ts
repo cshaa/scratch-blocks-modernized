@@ -24,6 +24,8 @@
  */
 'use strict';
 
+import { Workspace } from "./workspace";
+
 goog.provide('Blockly.Flyout');
 
 goog.require('Blockly.Block');
@@ -48,7 +50,10 @@ goog.require('goog.userAgent');
  * @param {!Object} workspaceOptions Dictionary of options for the workspace.
  * @constructor
  */
-Blockly.Flyout = function(workspaceOptions) {
+export class Flyout {
+  workspace_: Workspace;
+  
+  constructor(workspaceOptions) {
   workspaceOptions.getMetrics = this.getMetrics_.bind(this);
   workspaceOptions.setMetrics = this.setMetrics_.bind(this);
 
@@ -384,7 +389,7 @@ Blockly.Flyout.prototype.getHeight = function() {
  * @return {!Blockly.WorkspaceSvg} The workspace inside the flyout.
  * @package
  */
-Blockly.Flyout.prototype.getWorkspace = function() {
+getWorkspace() {
   return this.workspace_;
 };
 

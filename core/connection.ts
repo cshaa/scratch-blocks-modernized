@@ -24,6 +24,9 @@
  */
 'use strict';
 
+import { Block } from "./block";
+import { ConnectionType } from "./constants";
+
 goog.provide('Blockly.Connection');
 
 goog.require('Blockly.Events.BlockMove');
@@ -32,89 +35,95 @@ goog.require('goog.asserts');
 goog.require('goog.dom');
 
 
+
+/**
+ * Constants for checking whether two connections are compatible.
+ */
+export enum CannotConnectReason {
+  CAN_CONNECT = 0,
+  REASON_SELF_CONNECTION = 1,
+  REASON_WRONG_TYPE = 2,
+  REASON_TARGET_NULL = 3,
+  REASON_CHECKS_FAILED = 4,
+  REASON_DIFFERENT_WORKSPACES = 5,
+  REASON_SHADOW_PARENT = 6,
+  // Fixes #1127, but may be the wrong solution.
+  REASON_CUSTOM_PROCEDURE = 7,
+}
+
+
 /**
  * Class for a connection between blocks.
  * @param {!Blockly.Block} source The block establishing this connection.
  * @param {number} type The type of the connection.
  * @constructor
  */
-Blockly.Connection = function(source, type) {
-  /**
-   * @type {!Blockly.Block}
-   * @protected
-   */
-  this.sourceBlock_ = source;
-  /** @type {number} */
-  this.type = type;
-  // Shortcut for the databases for this connection's workspace.
-  if (source.workspace.connectionDBList) {
-    this.db_ = source.workspace.connectionDBList[type];
-    this.dbOpposite_ =
-        source.workspace.connectionDBList[Blockly.OPPOSITE_TYPE[type]];
-    this.hidden_ = !this.db_;
+export class Connection {
+  constructor(source: Block, type: ConnectionType) {
+    /**
+     * @type {!Blockly.Block}
+     * @protected
+     */
+    this.sourceBlock_ = source;
+    /** @type {number} */
+    this.type = type;
+    // Shortcut for the databases for this connection's workspace.
+    if (source.workspace.connectionDBList) {
+      this.db_ = source.workspace.connectionDBList[type];
+      this.dbOpposite_ =
+          source.workspace.connectionDBList[Blockly.OPPOSITE_TYPE[type]];
+      this.hidden_ = !this.db_;
+    }
   }
-};
 
-/**
- * Constants for checking whether two connections are compatible.
- */
-Blockly.Connection.CAN_CONNECT = 0;
-Blockly.Connection.REASON_SELF_CONNECTION = 1;
-Blockly.Connection.REASON_WRONG_TYPE = 2;
-Blockly.Connection.REASON_TARGET_NULL = 3;
-Blockly.Connection.REASON_CHECKS_FAILED = 4;
-Blockly.Connection.REASON_DIFFERENT_WORKSPACES = 5;
-Blockly.Connection.REASON_SHADOW_PARENT = 6;
-// Fixes #1127, but may be the wrong solution.
-Blockly.Connection.REASON_CUSTOM_PROCEDURE = 7;
 
 /**
  * Connection this connection connects to.  Null if not connected.
  * @type {Blockly.Connection}
  */
-Blockly.Connection.prototype.targetConnection = null;
+targetConnection: Connection | null = null;
 
 /**
  * List of compatible value types.  Null if all types are compatible.
  * @type {Array}
  * @private
  */
-Blockly.Connection.prototype.check_ = null;
+check_ = null;
 
 /**
  * DOM representation of a shadow block, or null if none.
  * @type {Element}
  * @private
  */
-Blockly.Connection.prototype.shadowDom_ = null;
+shadowDom_ = null;
 
 /**
  * Horizontal location of this connection.
  * @type {number}
  * @protected
  */
-Blockly.Connection.prototype.x_ = 0;
+x_ = 0;
 
 /**
  * Vertical location of this connection.
  * @type {number}
  * @protected
  */
-Blockly.Connection.prototype.y_ = 0;
+y_ = 0;
 
 /**
  * Has this connection been added to the connection database?
  * @type {boolean}
  * @protected
  */
-Blockly.Connection.prototype.inDB_ = false;
+inDB_ = false;
 
 /**
  * Connection database for connections of this type on the current workspace.
  * @type {Blockly.ConnectionDB}
  * @protected
  */
-Blockly.Connection.prototype.db_ = null;
+db_ = null;
 
 /**
  * Connection database for connections compatible with this type on the
@@ -122,14 +131,14 @@ Blockly.Connection.prototype.db_ = null;
  * @type {Blockly.ConnectionDB}
  * @protected
  */
-Blockly.Connection.prototype.dbOpposite_ = null;
+dbOpposite_ = null;
 
 /**
  * Whether this connections is hidden (not tracked in a database) or not.
  * @type {boolean}
  * @protected
  */
-Blockly.Connection.prototype.hidden_ = null;
+hidden_ = null;
 
 /**
  * Connect two connections together.  This is the connection on the superior
@@ -137,7 +146,7 @@ Blockly.Connection.prototype.hidden_ = null;
  * @param {!Blockly.Connection} childConnection Connection on inferior block.
  * @protected
  */
-Blockly.Connection.prototype.connect_ = function(childConnection) {
+connect_(childConnection: Connection) {
   var parentConnection = this;
   var parentBlock = parentConnection.getSourceBlock();
   var childBlock = childConnection.getSourceBlock();
@@ -237,7 +246,7 @@ Blockly.Connection.prototype.connect_ = function(childConnection) {
 /**
  * Sever all links to this connection (not including from the source object).
  */
-Blockly.Connection.prototype.dispose = function() {
+dispose() {
   if (this.isConnected()) {
     throw 'Disconnect connection before disposing of it.';
   }
@@ -252,7 +261,7 @@ Blockly.Connection.prototype.dispose = function() {
  * @return {boolean} true if the connection is not connected or is connected to
  *    an insertion marker, false otherwise.
  */
-Blockly.Connection.prototype.isConnectedToNonInsertionMarker = function() {
+isConnectedToNonInsertionMarker() {
   return this.targetConnection && !this.targetBlock().isInsertionMarker();
 };
 
@@ -260,7 +269,7 @@ Blockly.Connection.prototype.isConnectedToNonInsertionMarker = function() {
  * Get the source block for this connection.
  * @return {Blockly.Block} The source block, or null if there is none.
  */
-Blockly.Connection.prototype.getSourceBlock = function() {
+getSourceBlock() {
   return this.sourceBlock_;
 };
 
@@ -268,7 +277,7 @@ Blockly.Connection.prototype.getSourceBlock = function() {
  * Does the connection belong to a superior block (higher in the source stack)?
  * @return {boolean} True if connection faces down or right.
  */
-Blockly.Connection.prototype.isSuperior = function() {
+isSuperior() {
   return this.type == Blockly.INPUT_VALUE ||
       this.type == Blockly.NEXT_STATEMENT;
 };
@@ -277,7 +286,7 @@ Blockly.Connection.prototype.isSuperior = function() {
  * Is the connection connected?
  * @return {boolean} True if connection is connected to another connection.
  */
-Blockly.Connection.prototype.isConnected = function() {
+isConnected(): boolean {
   return !!this.targetConnection;
 };
 

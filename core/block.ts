@@ -24,6 +24,12 @@
  */
 'use strict';
 
+import { Connection } from "./connection";
+import { Input } from "./input";
+import { genUid } from "./utils";
+import { Point2 } from "./utils/math";
+import { Workspace } from "./workspace";
+
 goog.provide('Blockly.Block');
 
 goog.require('Blockly.Blocks');
@@ -60,253 +66,253 @@ goog.require('goog.string');
  *     be generated.
  * @constructor
  */
-Blockly.Block = function(workspace, prototypeName, opt_id) {
-  var flyoutWorkspace = workspace && workspace.getFlyout && workspace.getFlyout() ?
-     workspace.getFlyout().getWorkspace() : null;
-  /** @type {string} */
-  this.id = (opt_id && !workspace.getBlockById(opt_id) &&
-      (!flyoutWorkspace || !flyoutWorkspace.getBlockById(opt_id))) ?
-      opt_id : Blockly.utils.genUid();
-  workspace.blockDB_[this.id] = this;
-  /** @type {Blockly.Connection} */
-  this.outputConnection = null;
-  /** @type {Blockly.Connection} */
-  this.nextConnection = null;
-  /** @type {Blockly.Connection} */
-  this.previousConnection = null;
-  /** @type {!Array.<!Blockly.Input>} */
-  this.inputList = [];
-  /** @type {boolean|undefined} */
-  this.inputsInline = true;
-  /** @type {boolean} */
-  this.disabled = false;
-  /** @type {string|!Function} */
-  this.tooltip = '';
-  /** @type {boolean} */
-  this.contextMenu = true;
+export class Block {
+
+  /**
+   * An id unique across this workspace and the flyout workspace.
+   */
+  id: string;
+
+  type: string;
+  
+  /**
+   * An initialization function which, if defined, will be called inside the
+   * constructor. Can be defined on the specific blocks.
+   * TODO: wtf? investigate.
+   */
+  init:(() => void) | undefined;
+
+  constructor(public workspace: Workspace, prototypeName?: string, id?: string) {
+    
+    let flyoutWorkspace = workspace.getFlyout()?.getWorkspace() ?? null;
+
+    // if the id already exists or is invalid, discard it
+    if (id && workspace.getBlockById(id)) id = undefined;
+    if (id && flyoutWorkspace?.getBlockById(id)) id = undefined;
+    if (id === '') id = undefined;
+    
+    id ??= genUid();
+    this.id = id;
+
+    workspace.blockDB.set(id, this);
+
+
+    // Copy the type-specific functions and data from the prototype.
+    if (prototypeName !== undefined) {
+      this.type = prototypeName;
+      var prototype = Blockly.Blocks[prototypeName];
+      goog.asserts.assertObject(prototype,
+          'Error: Unknown block type "%s".', prototypeName);
+      goog.mixin(this, prototype);
+    }
+
+    workspace.addTopBlock(this);
+
+    // Call an initialization function, if it exists.
+    if (typeof this.init === 'function') {
+      this.init();
+    }
+
+    // Fire a create event.
+    if (Blockly.Events.isEnabled()) {
+      var existingGroup = Blockly.Events.getGroup();
+      if (!existingGroup) {
+        Blockly.Events.setGroup(true);
+      }
+      try {
+        Blockly.Events.fire(new Blockly.Events.BlockCreate(this));
+      } finally {
+        if (!existingGroup) {
+          Blockly.Events.setGroup(false);
+        }
+      }
+
+    }
+    // Bind an onchange function, if it exists.
+    if (goog.isFunction(this.onchange)) {
+      this.setOnChange(this.onchange);
+    }
+  }
+
+  outputConnection: Connection | null = null;
+  nextConnection: Connection | null = null;
+  previousConnection: Connection | null = null;
+  inputList: Input[] = [];
+  inputsInline: boolean | undefined = true;
+  disabled = false;
+  tooltip: string | Function = '';
+  contextMenu = true;
 
   /**
    * @type {Blockly.Block}
    * @protected
    */
-  this.parentBlock_ = null;
+  parentBlock_ = null;
 
   /**
    * @type {!Array.<!Blockly.Block>}
    * @protected
    */
-  this.childBlocks_ = [];
+  childBlocks_ = [];
 
   /**
    * @type {boolean}
    * @private
    */
-  this.deletable_ = true;
+  deletable_ = true;
 
   /**
    * @type {boolean}
    * @private
    */
-  this.movable_ = true;
+  movable_ = true;
 
   /**
    * @type {boolean}
    * @private
    */
-  this.editable_ = true;
+  editable_ = true;
 
   /**
    * @type {boolean}
    * @private
    */
-  this.isShadow_ = false;
+  isShadow_ = false;
 
   /**
    * @type {boolean}
    * @protected
    */
-  this.collapsed_ = false;
+  collapsed_ = false;
 
   /**
    * @type {boolean}
    * @private
    */
-  this.checkboxInFlyout_ = false;
+  checkboxInFlyout_ = false;
 
   /** @type {string|Blockly.Comment} */
-  this.comment = null;
+  comment = null;
 
   /**
    * @type {?number}
    * @private
    */
-  this.outputShape_ = null;
+  outputShape_ = null;
 
   /**
    * @type {?string}
    * @private
    */
-  this.category_ = null;
+  category_ = null;
 
   /**
    * The block's position in workspace units.  (0, 0) is at the workspace's
    * origin; scale does not change this value.
-   * @type {!goog.math.Coordinate}
+   * @type {!Point2}
    * @private
    */
-  this.xy_ = new goog.math.Coordinate(0, 0);
+  private xy = new Point2(0, 0);
 
-  /** @type {!Blockly.Workspace} */
-  this.workspace = workspace;
-  /** @type {boolean} */
-  this.isInFlyout = workspace.isFlyout;
-  /** @type {boolean} */
-  this.isInMutator = workspace.isMutator;
+  isInFlyout = this.workspace.isFlyout;
+  isInMutator = this.workspace.isMutator;
+  rtl = this.workspace.rtl;
 
-  /** @type {boolean} */
-  this.RTL = workspace.RTL;
+  isInsertionMarker_ = false;
 
-  /** @type {boolean} */
-  this.isInsertionMarker_ = false;
-
-  // Copy the type-specific functions and data from the prototype.
-  if (prototypeName) {
-    /** @type {string} */
-    this.type = prototypeName;
-    var prototype = Blockly.Blocks[prototypeName];
-    goog.asserts.assertObject(prototype,
-        'Error: Unknown block type "%s".', prototypeName);
-    goog.mixin(this, prototype);
-  }
-
-  workspace.addTopBlock(this);
-
-  // Call an initialization function, if it exists.
-  if (goog.isFunction(this.init)) {
-    this.init();
-  }
   // Record initial inline state.
-  /** @type {boolean|undefined} */
-  this.inputsInlineDefault = this.inputsInline;
+  inputsInlineDefault = this.inputsInline;
 
-  // Fire a create event.
-  if (Blockly.Events.isEnabled()) {
-    var existingGroup = Blockly.Events.getGroup();
-    if (!existingGroup) {
-      Blockly.Events.setGroup(true);
+
+  /**
+   * Optional text data that round-trips beween blocks and XML.
+   * Has no effect. May be used by 3rd parties for meta information.
+   * @type {?string}
+   */
+  data: string | null = null;
+
+  /**
+   * Colour of the block in '#RRGGBB' format.
+   */
+  colour: string = '#FF0000';
+
+  /**
+   * Secondary colour of the block in '#RRGGBB' format.
+   */
+  colourSecondary: string = '#FF0000';
+
+  /**
+   * Tertiary colour of the block in '#RRGGBB' format.
+   */
+  colourTertiary: string = '#FF0000';
+
+  /**
+   * Fill colour used to override default shadow colour behaviour.
+   */
+  shadowColour: string | null = null;
+
+  /**
+   * Dispose of this block.
+   * @param {boolean} healStack If true, then try to heal any gap by connecting
+   *     the next statement with the previous statement.  Otherwise, dispose of
+   *     all children of this block.
+   */
+  dispose(healStack: boolean) {
+    if (!this.workspace) {
+      // Already deleted.
+      return;
     }
+    // Terminate onchange event calls.
+    if (this.onchangeWrapper_) {
+      this.workspace.removeChangeListener(this.onchangeWrapper_);
+    }
+    this.unplug(healStack);
+    if (Blockly.Events.isEnabled()) {
+      Blockly.Events.fire(new Blockly.Events.BlockDelete(this));
+    }
+    Blockly.Events.disable();
+
     try {
-      Blockly.Events.fire(new Blockly.Events.BlockCreate(this));
+      // This block is now at the top of the workspace.
+      // Remove this block from the workspace's list of top-most blocks.
+      if (this.workspace) {
+        this.workspace.removeTopBlock(this);
+        // Remove from block database.
+        delete this.workspace.blockDB_[this.id];
+        this.workspace = null;
+      }
+
+      // Just deleting this block from the DOM would result in a memory leak as
+      // well as corruption of the connection database.  Therefore we must
+      // methodically step through the blocks and carefully disassemble them.
+
+      if (Blockly.selected == this) {
+        Blockly.selected = null;
+      }
+
+      // First, dispose of all my children.
+      for (var i = this.childBlocks_.length - 1; i >= 0; i--) {
+        this.childBlocks_[i].dispose(false);
+      }
+      // Then dispose of myself.
+      // Dispose of all inputs and their fields.
+      for (var i = 0, input; input = this.inputList[i]; i++) {
+        input.dispose();
+      }
+      this.inputList.length = 0;
+      // Dispose of any remaining connections (next/previous/output).
+      var connections = this.getConnections_(true);
+      for (var i = 0; i < connections.length; i++) {
+        var connection = connections[i];
+        if (connection.isConnected()) {
+          connection.disconnect();
+        }
+        connections[i].dispose();
+      }
     } finally {
-      if (!existingGroup) {
-        Blockly.Events.setGroup(false);
-      }
+      Blockly.Events.enable();
     }
-
   }
-  // Bind an onchange function, if it exists.
-  if (goog.isFunction(this.onchange)) {
-    this.setOnChange(this.onchange);
-  }
-};
-
-/**
- * Optional text data that round-trips beween blocks and XML.
- * Has no effect. May be used by 3rd parties for meta information.
- * @type {?string}
- */
-Blockly.Block.prototype.data = null;
-
-/**
- * Colour of the block in '#RRGGBB' format.
- * @type {string}
- * @private
- */
-Blockly.Block.prototype.colour_ = '#FF0000';
-
-/**
- * Secondary colour of the block in '#RRGGBB' format.
- * @type {string}
- * @private
- */
-Blockly.Block.prototype.colourSecondary_ = '#FF0000';
-
-/**
- * Tertiary colour of the block in '#RRGGBB' format.
- * @type {string}
- * @private
- */
-Blockly.Block.prototype.colourTertiary_ = '#FF0000';
-
-/**
- * Fill colour used to override default shadow colour behaviour.
- * @type {string}
- * @private
- */
-Blockly.Block.prototype.shadowColour_ = null;
-
-/**
- * Dispose of this block.
- * @param {boolean} healStack If true, then try to heal any gap by connecting
- *     the next statement with the previous statement.  Otherwise, dispose of
- *     all children of this block.
- */
-Blockly.Block.prototype.dispose = function(healStack) {
-  if (!this.workspace) {
-    // Already deleted.
-    return;
-  }
-  // Terminate onchange event calls.
-  if (this.onchangeWrapper_) {
-    this.workspace.removeChangeListener(this.onchangeWrapper_);
-  }
-  this.unplug(healStack);
-  if (Blockly.Events.isEnabled()) {
-    Blockly.Events.fire(new Blockly.Events.BlockDelete(this));
-  }
-  Blockly.Events.disable();
-
-  try {
-    // This block is now at the top of the workspace.
-    // Remove this block from the workspace's list of top-most blocks.
-    if (this.workspace) {
-      this.workspace.removeTopBlock(this);
-      // Remove from block database.
-      delete this.workspace.blockDB_[this.id];
-      this.workspace = null;
-    }
-
-    // Just deleting this block from the DOM would result in a memory leak as
-    // well as corruption of the connection database.  Therefore we must
-    // methodically step through the blocks and carefully disassemble them.
-
-    if (Blockly.selected == this) {
-      Blockly.selected = null;
-    }
-
-    // First, dispose of all my children.
-    for (var i = this.childBlocks_.length - 1; i >= 0; i--) {
-      this.childBlocks_[i].dispose(false);
-    }
-    // Then dispose of myself.
-    // Dispose of all inputs and their fields.
-    for (var i = 0, input; input = this.inputList[i]; i++) {
-      input.dispose();
-    }
-    this.inputList.length = 0;
-    // Dispose of any remaining connections (next/previous/output).
-    var connections = this.getConnections_(true);
-    for (var i = 0; i < connections.length; i++) {
-      var connection = connections[i];
-      if (connection.isConnected()) {
-        connection.disconnect();
-      }
-      connections[i].dispose();
-    }
-  } finally {
-    Blockly.Events.enable();
-  }
-};
 
 /**
  * Call initModel on all fields on the block.
@@ -317,50 +323,44 @@ Blockly.Block.prototype.dispose = function(healStack) {
  * change).
  * @public
  */
-Blockly.Block.prototype.initModel = function() {
-  for (var i = 0, input; input = this.inputList[i]; i++) {
-    for (var j = 0, field; field = input.fieldRow[j]; j++) {
-      if (field.initModel) {
-        field.initModel();
+  initModel() {
+    for (let input of this.inputList) {
+      for (let field of input.fieldRow) {
+        if (field.initModel) {
+          field.initModel();
+        }
       }
     }
-  }
-};
+  };
 
-/**
- * Unplug this block from its superior block.  If this block is a statement,
- * optionally reconnect the block underneath with the block on top.
- * @param {boolean=} opt_healStack Disconnect child statement and reconnect
- *   stack.  Defaults to false.
- */
-Blockly.Block.prototype.unplug = function(opt_healStack) {
-  if (this.outputConnection) {
-    if (this.outputConnection.isConnected()) {
-      // Disconnect from any superior block.
-      this.outputConnection.disconnect();
+  /**
+   * Unplug this block from its superior block.  If this block is a statement,
+   * optionally reconnect the block underneath with the block on top.
+   * @param {boolean=} healStack Disconnect child statement and reconnect
+   *   stack.  Defaults to false.
+   */
+  unplug (healStack: boolean = false) {
+    if (this.outputConnection?.isConnected()) this.outputConnection.disconnect();
+    
+    // Remember the connection that any next statements need to connect to.
+    let previousTarget: Connection | null = null;
+
+    if (this.previousConnection?.isConnected()) {
+      previousTarget = this.previousConnection.targetConnection;
+      this.previousConnection.disconnect();
     }
-  } else {
-    if (this.previousConnection) {
-      var previousTarget = null;
-      if (this.previousConnection.isConnected()) {
-        // Remember the connection that any next statements need to connect to.
-        previousTarget = this.previousConnection.targetConnection;
-        // Detach this block from the parent's tree.
-        this.previousConnection.disconnect();
-      }
-    }
-    var nextBlock = this.getNextBlock();
-    if (opt_healStack && nextBlock) {
+
+    if (healStack && this.nextConnection?.isConnected()) {
       // Disconnect the next statement.
-      var nextTarget = this.nextConnection.targetConnection;
-      nextTarget.disconnect();
+      let nextTarget = this.nextConnection.targetConnection;
+      this.nextConnection.disconnect();
+
       if (previousTarget && previousTarget.checkType_(nextTarget)) {
         // Attach the next statement to the previous statement.
         previousTarget.connect(nextTarget);
       }
     }
   }
-};
 
 /**
  * Returns all connections originating from this block.
@@ -472,13 +472,13 @@ Blockly.Block.prototype.getSurroundParent = function() {
   return block;
 };
 
-/**
- * Return the next statement block directly connected to this block.
- * @return {Blockly.Block} The next statement block or null.
- */
-Blockly.Block.prototype.getNextBlock = function() {
-  return this.nextConnection && this.nextConnection.targetBlock();
-};
+  /**
+   * Return the next statement block directly connected to this block.
+   * @return {Blockly.Block} The next statement block or null.
+   */
+  getNextBlock() {
+    return this.nextConnection?.targetBlock();
+  };
 
 /**
  * Return the previous statement block directly connected to this block.
@@ -1730,7 +1730,7 @@ Blockly.Block.prototype.setMutator = function(/* mutator */) {
  * drawing surface's origin (0,0), in workspace units.
  * @return {!goog.math.Coordinate} Object with .x and .y properties.
  */
-Blockly.Block.prototype.getRelativeToSurfaceXY = function() {
+getRelativeToSurfaceXY() {
   return this.xy_;
 };
 
@@ -1809,3 +1809,4 @@ Blockly.Block.prototype.toDevString = function() {
   }
   return msg;
 };
+}

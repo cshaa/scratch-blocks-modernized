@@ -32,11 +32,8 @@ import { SVG_NS } from "./constants";
  * @namespace
  **/
 
-goog.require('Blockly.Touch');
-goog.require('goog.dom');
-goog.require('goog.events.BrowserFeature');
-goog.require('goog.math.Coordinate');
-goog.require('goog.userAgent');
+
+// FIXME move these functions into corresponding scripts in the utils directory
 
 
 /**

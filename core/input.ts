@@ -24,6 +24,11 @@
  */
 'use strict';
 
+import { Block } from "./block";
+import { Connection } from "./connection";
+import { ConnectionType } from "./constants";
+import { Field } from "./field";
+
 goog.provide('Blockly.Input');
 
 goog.require('Blockly.Connection');
@@ -40,31 +45,28 @@ goog.require('goog.asserts');
  * @param {Blockly.Connection} connection Optional connection for this input.
  * @constructor
  */
-Blockly.Input = function(type, name, block, connection) {
-  if (type != Blockly.DUMMY_INPUT && !name) {
-    throw 'Value inputs and statement inputs must have non-empty name.';
+export class Input {
+  constructor(
+    public type: ConnectionType,
+    public name: string,
+    public sourceBlock: Block,
+    public connection: Connection
+  ) {
+    if (type !== ConnectionType.DummyInput && !name) {
+      throw 'Value inputs and statement inputs must have non-empty name.';
+    }
   }
-  /** @type {number} */
-  this.type = type;
-  /** @type {string} */
-  this.name = name;
-  /**
-   * @type {!Blockly.Block}
-   * @private
-   */
-  this.sourceBlock_ = block;
-  /** @type {Blockly.Connection} */
-  this.connection = connection;
+  
   /** @type {!Array.<!Blockly.Field>} */
-  this.fieldRow = [];
+  fieldRow: Field[] = [];
 
   /**
    * The shape that is displayed when this input is rendered but not filled.
    * @type {SVGElement}
    * @package
    */
-  this.outlinePath = null;
-};
+  outlinePath: SVGAElement | null = null;
+
 
 /**
  * Alignment of input's fields (left, right or centre).

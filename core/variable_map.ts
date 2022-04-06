@@ -24,6 +24,8 @@
  */
 'use strict';
 
+import { Workspace } from "./workspace";
+
 goog.provide('Blockly.VariableMap');
 
 goog.require('Blockly.Events.VarDelete');
@@ -38,7 +40,8 @@ goog.require('Blockly.VariableModel');
  * @param {!Blockly.Workspace} workspace The workspace this map belongs to.
  * @constructor
  */
-Blockly.VariableMap = function(workspace) {
+export class VariableMap {
+  constructor(workspace: Workspace) {
   /**
    * A map from variable type to list of variable names.  The lists contain all
    * of the named variables in the workspace, including variables
